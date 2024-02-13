@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: .
+      target: builder
+    environment:
+      PORT: 8000
+    restart: "no"
+    deploy:
+        replicas: 2
+        resources:
+          limits:
+            memory: "200MB"
+    networks:
+      - rinha
+
+  db:
+    image: postgres:latest
+    hostname: db
+    environment:
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_USER=admin
+      - POSTGRES_DB=rinha
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/script.sql:/docker-entrypoint-initdb.d/script.sql
+    deploy:
+      resources:
+        limits:
+          memory: "200MB"
+    networks:
+      - rinha
+
+  loadbalancer:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf:/tmp/nginx.conf
+    command: /bin/bash -c "envsubst < /tmp/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'" 
+    ports:
+      - 9999:80
+    deploy:
+      resources:
+        limits:
+          memory: "200MB"
+    networks:
+      - rinha
+    depends_on:
+      - api
+
+networks:
+  rinha:
